@@ -1,0 +1,23 @@
+{
+    "unicast" : "192.168.178.47",
+    "applications" :
+    [
+        {
+            "name" : "service-sample",
+            "id" : "0x1277"
+        }
+    ],
+    "services" :
+    [
+        {
+            "service" : "0x1234",
+            "instance" : "0x5678",
+            "unreliable" : "30509"
+        }
+    ],
+    "routing" : "service-sample",
+    "service-discovery" :
+    {
+        "enable": "false"
+    }
+}
