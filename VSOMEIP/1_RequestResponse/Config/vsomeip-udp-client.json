@@ -1,0 +1,24 @@
+{
+    "unicast" : "192.168.178.48",
+    "netmask" : "255.255.255.0",
+    "applications" :
+    [
+        {
+            "name" : "client-sample",
+            "id" : "0x1343"
+        }
+    ],
+    "services" : [
+        {
+            "service" : "0x1234",
+            "instance" : "0x5678",
+            "unreliable" : "30509",
+            "unicast" : "192.168.178.47"
+        }
+    ],
+    "routing" : "client-sample",
+    "service-discovery" :
+    {
+        "enable": "false"
+    }
+}
