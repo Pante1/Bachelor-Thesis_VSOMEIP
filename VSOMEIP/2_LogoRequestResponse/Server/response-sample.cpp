@@ -19,6 +19,120 @@
 
 #include "sample-ids.hpp"
 
+//C Code Utilities and Setup **************************************************************/
+#include <iostream>
+#include <fcntl.h>       // For open(), O_RDONLY, O_CREAT, etc.
+#include <sys/ipc.h>     // For IPC_CREAT, shmget(), shmat(), shmdt()
+#include <sys/shm.h>     // For shared memory functions
+#include <unistd.h>      // For close(), unlink()
+#include <cstring>       // For perror(), strerror()
+#include <ctime>         // For clock_gettime()
+#include <sys/stat.h>    // Für mkfifo()
+//*******************************************************************/
+
+const char* PathToObjectDetectionModel = "ObjectDetectionModel.py";
+
+//Time **************************************************************/
+#define NUM_MEASUREMENTS 1000
+static long gStartTimestamp_Sec;
+static long gStartTimestamp_Nsec;
+static long gEndTimestamp_Sec;
+static long gEndTimestamp_Nsec;
+static int timeMeasurementIndex = 0;
+
+long getTimestamp_Sec();
+long getTimestamp_Nsec();
+//*******************************************************************/
+
+//Shared Memory *****************************************************/
+#define SHMKEY 4711
+#define PIPMODE 0600
+
+#define BUFFER_SIZE 1024
+char gSendDataBuffer[BUFFER_SIZE];
+
+pid_t childProcessId;
+
+typedef struct {
+	bool logosDetected;
+    int logos[4];
+    long timestampMemoryInsertion_Sec;
+    long timestampMemoryInsertion_Nsec;
+    } gLogoDetectionDataset;
+
+gLogoDetectionDataset *gLogoDetection = nullptr;
+
+int gFd_FIFO = -1;
+int gShmId = -1;
+char gMsgBuffer_FIFO[16];
+int gReadBytes_FIFO = -1;//currently not used
+
+int initializeFIFOAndSharedMemory();
+void detachSharedMemoryAndClosePipe();
+//*******************************************************************/
+
+long getTimestamp_Sec()
+{
+	struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec;
+}
+
+long getTimestamp_Nsec(void)
+{
+	struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_nsec;
+}
+
+int initializeFIFOAndSharedMemory() {
+    int errorFlag = -1;
+
+    //If the program is terminated with Ctrl+C
+    shmdt(gLogoDetection);
+    close(gFd_FIFO);
+    unlink("FIFO");
+
+    if (mkfifo("FIFO", PIPMODE) < 0) {
+        perror("Error creating FIFO");
+    } else {
+        gFd_FIFO = open("FIFO", O_RDONLY, 0);
+        if (gFd_FIFO < 0) {
+            perror("Error opening FIFO for reading");
+        } else {
+            gShmId = shmget(SHMKEY, sizeof(gLogoDetectionDataset), IPC_CREAT | PIPMODE);
+            if (gShmId < 0) {
+                perror("Error requesting shared memory");
+            } else {
+                gLogoDetection = (gLogoDetectionDataset*)shmat(gShmId, nullptr, 0);
+                if (gLogoDetection == (gLogoDetectionDataset*)-1) {
+                    perror("Error attaching shared memory");
+                } else {
+                    errorFlag = 0;
+                }
+            }
+        }
+    }
+
+    return errorFlag;
+}
+
+void detachSharedMemoryAndClosePipe() {
+    if (shmdt(gLogoDetection) == -1){
+        perror("Error detaching shared memory");
+    }
+
+    if (close(gFd_FIFO) == -1) {
+        perror("Error closing FIFO");
+    }
+
+    if (unlink("FIFO") == -1) {
+        perror("Error deleting FIFO");
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////
+
+
 class service_sample {
 public:
     service_sample(bool _use_static_routing) :
@@ -55,6 +169,7 @@ public:
     }
 
     void stop() {
+        std::cout << "stop() is called" << std::endl;
         running_ = false;
         blocked_ = true;
         app_->clear_all_handler();
@@ -67,6 +182,13 @@ public:
         } else {
             offer_thread_.detach();
         }
+
+        detachSharedMemoryAndClosePipe();//-----------------------------
+		if (kill(childProcessId, SIGKILL) == -1)
+		{
+            perror("Error killing the process");
+		}//-------------------------------------------------------------
+
         app_->stop();
     }
 
@@ -99,23 +221,40 @@ public:
 
     void on_message(const std::shared_ptr<vsomeip::message> &_request) {
         std::cout << "Received a message with Client/Session ["
-		  << std::hex << std::setfill('0')
-		  << std::setw(4) << _request->get_client() << "/"
-		  << std::setw(4) << _request->get_session() << "]"
-		  << std::endl;
+                << std::hex << std::setfill('0')
+                << std::setw(4) << _request->get_client() << "/"
+                << std::setw(4) << _request->get_session() << "]"
+                << std::endl;
 
-        std::shared_ptr<vsomeip::message> its_response
-            = vsomeip::runtime::get()->create_response(_request);
+        auto payload = _request->get_payload();
+        if (payload) {
+            auto raw_data = payload->get_data();
+            auto data_length = payload->get_length();
+            std::string received_message(reinterpret_cast<const char *>(raw_data), data_length);
+            std::cout << "Message received from client: " << received_message << std::endl;
+        }
+        else {
+            std::cerr << "Payload is null, no data received from client." << std::endl;
+            return;
+        }
+            gReadBytes_FIFO = read(gFd_FIFO, gMsgBuffer_FIFO, sizeof(gMsgBuffer_FIFO));
 
-        std::shared_ptr<vsomeip::payload> its_payload
-            = vsomeip::runtime::get()->create_payload();
-        std::vector<vsomeip::byte_t> its_payload_data;
-        for (std::size_t i = 0; i < 120; ++i)
-            its_payload_data.push_back(vsomeip::byte_t(i % 256));
-        its_payload->set_data(its_payload_data);
-        its_response->set_payload(its_payload);
+        if (gMsgBuffer_FIFO[0] == 'D') {
+            std::cout << "Logos detected: ";
+            std::vector<vsomeip::byte_t> response_payload;
+            for (int i = 0; i < 4; ++i) {
+                response_payload.push_back(static_cast<vsomeip::byte_t>(gLogoDetection->logos[i]));
+                std::cout << gLogoDetection->logos[i] << " ";
+            }
+            std::cout << std::endl;
 
-        app_->send(its_response);
+            std::shared_ptr<vsomeip::message> its_response = vsomeip::runtime::get()->create_response(_request);
+            std::shared_ptr<vsomeip::payload> its_payload = vsomeip::runtime::get()->create_payload();
+            its_payload->set_data(response_payload);
+            its_response->set_payload(its_payload);
+            app_->send(its_response);
+            std::cout << "Response sent to client." << std::endl;
+            }
     }
 
     void run() {
@@ -176,19 +315,37 @@ int main(int argc, char **argv) {
         }
     }
 
-    service_sample its_sample(use_static_routing);
-#ifndef VSOMEIP_ENABLE_SIGNAL_HANDLING
-    its_sample_ptr = &its_sample;
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
-#endif
-    if (its_sample.init()) {
-        its_sample.start();
-#ifdef VSOMEIP_ENABLE_SIGNAL_HANDLING
-        its_sample.stop();
-#endif
-        return 0;
+    childProcessId = fork();
+    if (childProcessId < 0) {
+        std::cerr << "Error with fork: " << strerror(errno) << std::endl;
+        return EXIT_FAILURE;
+    } else if (childProcessId == 0) {
+        if (execlp("python3", "python3", PathToObjectDetectionModel, (char*)nullptr) == -1) {
+            std::cerr << "Error executing Python script: " << strerror(errno) << std::endl;
+            exit(EXIT_FAILURE);
+        }
     } else {
-        return 1;
+        if (initializeFIFOAndSharedMemory() != 0) {
+            printf("Error with initializeFIFOAndSharedMemory().\n");
+            exit(EXIT_FAILURE);
+        }
+
+        service_sample its_sample(use_static_routing);
+#ifndef VSOMEIP_ENABLE_SIGNAL_HANDLING
+        its_sample_ptr = &its_sample;
+        signal(SIGINT, handle_signal);
+        signal(SIGTERM, handle_signal);
+#endif
+        if (its_sample.init()) {
+            its_sample.start();
+#ifdef VSOMEIP_ENABLE_SIGNAL_HANDLING
+            its_sample.stop();
+#endif
+            return 0;
+        } else {
+            return 1;
+        }
     }
+
+    return 0;
 }

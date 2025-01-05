@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server
+CMAKE_SOURCE_DIR = /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build
+CMAKE_BINARY_DIR = /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -82,14 +82,14 @@ clean: CMakeFiles/examples.dir/clean
 CMakeFiles/response-sample.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/response-sample.dir/build.make CMakeFiles/response-sample.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/response-sample.dir/build.make CMakeFiles/response-sample.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build/CMakeFiles --progress-num=1,2 "Built target response-sample"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build/CMakeFiles --progress-num=1,2 "Built target response-sample"
 .PHONY : CMakeFiles/response-sample.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/response-sample.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/response-sample.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build/CMakeFiles 0
 .PHONY : CMakeFiles/response-sample.dir/rule
 
 # Convenience name for target.
@@ -108,14 +108,14 @@ CMakeFiles/response-sample.dir/clean:
 CMakeFiles/examples.dir/all: CMakeFiles/response-sample.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/examples.dir/build.make CMakeFiles/examples.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/examples.dir/build.make CMakeFiles/examples.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build/CMakeFiles --progress-num= "Built target examples"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build/CMakeFiles --progress-num= "Built target examples"
 .PHONY : CMakeFiles/examples.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/examples.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/examples.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_vSOMEIP/vSOMEIP/1_ResponseRequest/Server/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Server/build/CMakeFiles 0
 .PHONY : CMakeFiles/examples.dir/rule
 
 # Convenience name for target.
