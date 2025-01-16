@@ -34,7 +34,7 @@ const char* PathToObjectDetectionModel = "/home/raspberry/Desktop/YOLO/Ultralyti
 //const char* PathToObjectDetectionModel = "ObjectDetectionModel.py";
 
 //Time **************************************************************/
-#define NUM_MEASUREMENTS 1000
+#define NUM_MEASUREMENTS 1200
 static long gStartTimestamp_Sec;
 static long gStartTimestamp_Nsec;
 static long gEndTimestamp_Sec;
@@ -52,7 +52,7 @@ long getTimestamp_Nsec();
 #define BUFFER_SIZE 1024
 char gSendDataBuffer[BUFFER_SIZE];
 
-pid_t childProcessId;
+pid_t childProcessId = -1;
 
 typedef struct {
 	bool logosDetected;
@@ -133,7 +133,6 @@ void detachSharedMemoryAndClosePipe() {
 }
 //////////////////////////////////////////////////////////////////////////////////
 
-
 class service_sample {
 public:
     service_sample(bool _use_static_routing) :
@@ -170,7 +169,6 @@ public:
     }
 
     void stop() {
-        std::cout << "stop() is called" << std::endl;
         running_ = false;
         blocked_ = true;
         app_->clear_all_handler();
@@ -221,41 +219,40 @@ public:
     }
 
     void on_message(const std::shared_ptr<vsomeip::message> &_request) {
+
+        static uint32_t currentNumber = 0;
+
         std::cout << "Received a message with Client/Session ["
-                << std::hex << std::setfill('0')
-                << std::setw(4) << _request->get_client() << "/"
-                << std::setw(4) << _request->get_session() << "]"
-                << std::endl;
+		  << std::hex << std::setfill('0')
+		  << std::setw(4) << _request->get_client() << "/"
+		  << std::setw(4) << _request->get_session() << "]"
+		  << std::endl;
 
-        auto payload = _request->get_payload();
-        if (payload) {
-            auto raw_data = payload->get_data();
-            auto data_length = payload->get_length();
-            std::string received_message(reinterpret_cast<const char *>(raw_data), data_length);
-            std::cout << "Message received from client: " << received_message << std::endl;
-        }
-        else {
-            std::cerr << "Payload is null, no data received from client." << std::endl;
-            return;
-        }
-            gReadBytes_FIFO = read(gFd_FIFO, gMsgBuffer_FIFO, sizeof(gMsgBuffer_FIFO));
+        std::shared_ptr<vsomeip::message> its_response = vsomeip::runtime::get()->create_response(_request);
+        std::shared_ptr<vsomeip::payload> its_payload = vsomeip::runtime::get()->create_payload();
 
+        std::vector<vsomeip::byte_t> its_payload_data;
+
+        gReadBytes_FIFO = read(gFd_FIFO, gMsgBuffer_FIFO, sizeof(gMsgBuffer_FIFO));
         if (gMsgBuffer_FIFO[0] == 'D') {
-            std::cout << "Logos detected: ";
-            std::vector<vsomeip::byte_t> response_payload;
-            for (int i = 0; i < 4; ++i) {
-                response_payload.push_back(static_cast<vsomeip::byte_t>(gLogoDetection->logos[i]));
-                std::cout << gLogoDetection->logos[i] << " ";
+            
+            for(int i = 0; i < 4; i++){
+                its_payload_data.push_back(static_cast<vsomeip::byte_t>(gLogoDetection->logos[i]));
             }
-            std::cout << std::endl;
-
-            std::shared_ptr<vsomeip::message> its_response = vsomeip::runtime::get()->create_response(_request);
-            std::shared_ptr<vsomeip::payload> its_payload = vsomeip::runtime::get()->create_payload();
-            its_payload->set_data(response_payload);
+            
+            its_payload->set_data(its_payload_data);
             its_response->set_payload(its_payload);
             app_->send(its_response);
-            std::cout << "Response sent to client." << std::endl;
-            }
+
+            currentNumber++;
+        }
+
+        if (currentNumber >= NUM_MEASUREMENTS)
+        {
+            std::cout << "Server finished sending. Stopping application." << std::endl;
+            app_->stop();
+            return;
+        }  
     }
 
     void run() {
@@ -263,22 +260,11 @@ public:
         while (!blocked_)
             condition_.wait(its_lock);
 
-        bool is_offer(true);
+        offer();
+        std::cout << "Service is now being offered continuously." << std::endl;
 
-        if (use_static_routing_) {
-            offer();
-            while (running_);
-        } else {
-            while (running_) {
-                if (is_offer)
-                    offer();
-                else
-                    stop_offer();
-
-                for (int i = 0; i < 10 && running_; i++)
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-                is_offer = !is_offer;
-            }
+        while (running_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
     }
 
@@ -306,47 +292,48 @@ private:
 #endif
 
 int main(int argc, char **argv) {
-    bool use_static_routing(false);
-
-    std::string static_routing_enable("--static-routing");
-
-    for (int i = 1; i < argc; i++) {
-        if (static_routing_enable == argv[i]) {
-            use_static_routing = true;
-        }
-    }
 
     childProcessId = fork();
     if (childProcessId < 0) {
         std::cerr << "Error with fork: " << strerror(errno) << std::endl;
         return EXIT_FAILURE;
-    } else if (childProcessId == 0) {
+    }
+    else if (childProcessId == 0) {
         if (execlp("python3", "python3", PathToObjectDetectionModel, (char*)nullptr) == -1) {
             std::cerr << "Error executing Python script: " << strerror(errno) << std::endl;
             exit(EXIT_FAILURE);
         }
-    } else {
+    }
+    else {
         if (initializeFIFOAndSharedMemory() != 0) {
             printf("Error with initializeFIFOAndSharedMemory().\n");
             exit(EXIT_FAILURE);
         }
 
+        bool use_static_routing(false);
+
+        std::string static_routing_enable("--static-routing");
+
+        for (int i = 1; i < argc; i++) {
+            if (static_routing_enable == argv[i]) {
+                use_static_routing = true;
+            }
+        }
+
         service_sample its_sample(use_static_routing);
-#ifndef VSOMEIP_ENABLE_SIGNAL_HANDLING
+    #ifndef VSOMEIP_ENABLE_SIGNAL_HANDLING
         its_sample_ptr = &its_sample;
         signal(SIGINT, handle_signal);
         signal(SIGTERM, handle_signal);
-#endif
+    #endif
         if (its_sample.init()) {
             its_sample.start();
-#ifdef VSOMEIP_ENABLE_SIGNAL_HANDLING
+    #ifdef VSOMEIP_ENABLE_SIGNAL_HANDLING
             its_sample.stop();
-#endif
+    #endif
             return 0;
         } else {
             return 1;
         }
     }
-
-    return 0;
 }
