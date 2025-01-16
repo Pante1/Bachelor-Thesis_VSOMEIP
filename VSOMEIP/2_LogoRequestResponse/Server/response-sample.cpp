@@ -30,7 +30,8 @@
 #include <sys/stat.h>    // Für mkfifo()
 //*******************************************************************/
 
-const char* PathToObjectDetectionModel = "ObjectDetectionModel.py";
+const char* PathToObjectDetectionModel = "/home/raspberry/Desktop/YOLO/Ultralytics_YOLOv8/LogoRecognitionFromCamera_With_SharedMemory2.py";
+//const char* PathToObjectDetectionModel = "ObjectDetectionModel.py";
 
 //Time **************************************************************/
 #define NUM_MEASUREMENTS 1000
@@ -91,12 +92,12 @@ int initializeFIFOAndSharedMemory() {
     //If the program is terminated with Ctrl+C
     shmdt(gLogoDetection);
     close(gFd_FIFO);
-    unlink("FIFO");
+    unlink("/home/raspberry/Desktop/GitHub_UDP/FIFO");
 
-    if (mkfifo("FIFO", PIPMODE) < 0) {
+    if (mkfifo("/home/raspberry/Desktop/GitHub_UDP/FIFO", PIPMODE) < 0) {
         perror("Error creating FIFO");
     } else {
-        gFd_FIFO = open("FIFO", O_RDONLY, 0);
+        gFd_FIFO = open("/home/raspberry/Desktop/GitHub_UDP/FIFO", O_RDONLY, 0);
         if (gFd_FIFO < 0) {
             perror("Error opening FIFO for reading");
         } else {
@@ -126,7 +127,7 @@ void detachSharedMemoryAndClosePipe() {
         perror("Error closing FIFO");
     }
 
-    if (unlink("FIFO") == -1) {
+    if (unlink("/home/raspberry/Desktop/GitHub_UDP/FIFO") == -1) {
         perror("Error deleting FIFO");
     }
 }
