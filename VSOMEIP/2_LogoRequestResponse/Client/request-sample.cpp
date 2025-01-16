@@ -16,6 +16,8 @@
 
 #include "sample-ids.hpp"
 
+#include <vector>
+
 class client_sample {
 public:
     client_sample(bool _use_tcp, bool _be_quiet, uint32_t _cycle)
@@ -31,7 +33,8 @@ public:
     }
 
     bool init() {
-        if (!app_->init()) {
+        if (!app_->init())
+        {
             std::cerr << "Couldn't initialize application" << std::endl;
             return false;
         }
@@ -45,41 +48,28 @@ public:
                   << "]"
                   << std::endl;
 
-        app_->register_state_handler(
-                std::bind(
-                    &client_sample::on_state,
-                    this,
-                    std::placeholders::_1));
-
-        app_->register_message_handler(
-                vsomeip::ANY_SERVICE, SAMPLE_INSTANCE_ID, vsomeip::ANY_METHOD,
-                std::bind(&client_sample::on_message,
-                          this,
-                          std::placeholders::_1));
+        app_->register_state_handler(std::bind(&client_sample::on_state, this, std::placeholders::_1));
+        app_->register_message_handler(vsomeip::ANY_SERVICE, SAMPLE_INSTANCE_ID, vsomeip::ANY_METHOD, std::bind(&client_sample::on_message, this, std::placeholders::_1));
 
         request_->set_service(SAMPLE_SERVICE_ID);
         request_->set_instance(SAMPLE_INSTANCE_ID);
         request_->set_method(SAMPLE_METHOD_ID);
 
-        std::shared_ptr< vsomeip::payload > its_payload = vsomeip::runtime::get()->create_payload();
-        std::vector< vsomeip::byte_t > its_payload_data;
-        for (std::size_t i = 0; i < 10; ++i)
-            its_payload_data.push_back(vsomeip::byte_t(i % 256));
-        its_payload->set_data(its_payload_data);
-        request_->set_payload(its_payload);
+        // Create and send a payload with a greeting message
+        std::shared_ptr<vsomeip::payload> greeting_payload = vsomeip::runtime::get()->create_payload();
+        std::string greeting_message = "Hello, Server! <><><><><><><><><><><><><><><><>";
+        std::vector<vsomeip::byte_t> greeting_data(greeting_message.begin(), greeting_message.end());
+        greeting_payload->set_data(greeting_data);
+        request_->set_payload(greeting_payload);
+        app_->send(request_);
+        std::cout << "Greeting message sent to the server: " << greeting_message << std::endl;
 
-        app_->register_availability_handler(SAMPLE_SERVICE_ID, SAMPLE_INSTANCE_ID,
-                std::bind(&client_sample::on_availability,
-                          this,
-                          std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        app_->register_availability_handler(SAMPLE_SERVICE_ID, SAMPLE_INSTANCE_ID, std::bind(&client_sample::on_availability, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        app_->register_availability_handler(SAMPLE_SERVICE_ID + 1, SAMPLE_INSTANCE_ID, std::bind(&client_sample::on_availability, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-        app_->register_availability_handler(SAMPLE_SERVICE_ID + 1, SAMPLE_INSTANCE_ID,
-                std::bind(&client_sample::on_availability,
-                          this,
-                          std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
         return true;
     }
-
+    
     void start() {
         app_->start();
     }
@@ -123,7 +113,7 @@ public:
         }
     }
 
-    void on_message(const std::shared_ptr< vsomeip::message > &_response) {
+    void on_message(const std::shared_ptr<vsomeip::message> &_response) {
         std::cout << "Received a response from Service ["
                 << std::hex << std::setfill('0')
                 << std::setw(4) << _response->get_service()
@@ -135,6 +125,41 @@ public:
                 << std::setw(4) << _response->get_session()
                 << "]"
                 << std::endl;
+
+        auto payload = _response->get_payload();
+        if (payload) {
+            const vsomeip::byte_t* raw_data = payload->get_data();
+            std::size_t data_length = payload->get_length();
+
+            if (data_length == 4) { //Payload has exactly 4 bytes
+                std::cout << "Received logos: ";
+                for (std::size_t i = 0; i < data_length; ++i) {
+                    std::cout << static_cast<int>(raw_data[i]) << " ";
+                }
+                std::cout << std::endl;
+
+                std::shared_ptr<vsomeip::message> reply = vsomeip::runtime::get()->create_request(false);
+                reply->set_service(SAMPLE_SERVICE_ID);
+                reply->set_instance(SAMPLE_INSTANCE_ID);
+                reply->set_method(SAMPLE_METHOD_ID);
+
+                std::shared_ptr<vsomeip::payload> reply_payload = vsomeip::runtime::get()->create_payload();
+                std::string reply_data = "Logos received";
+                std::vector<vsomeip::byte_t> reply_payload_data(reply_data.begin(), reply_data.end());
+                reply_payload->set_data(reply_payload_data);
+                reply->set_payload(reply_payload);
+
+                app_->send(reply);
+                std::cout << "Reply sent to server: " << reply_data << std::endl;
+            }
+        else {
+                std::cerr << "Unexpected payload size: " << data_length << " bytes" << std::endl;
+            }
+        }
+        else {
+            std::cerr << "Payload is null." << std::endl;
+        }
+
         if (is_available_)
             send();
     }
