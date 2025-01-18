@@ -219,44 +219,18 @@ public:
     }
 
     void on_message(const std::shared_ptr<vsomeip::message> &_request) {
-
-        static uint32_t currentNumber = 0;
-
-        std::cout << "Received a message with Client/Session ["
-		  << std::hex << std::setfill('0')
-		  << std::setw(4) << _request->get_client() << "/"
-		  << std::setw(4) << _request->get_session() << "]"
-		  << std::endl;
-
         std::shared_ptr<vsomeip::message> its_response = vsomeip::runtime::get()->create_response(_request);
         std::shared_ptr<vsomeip::payload> its_payload = vsomeip::runtime::get()->create_payload();
 
         std::vector<vsomeip::byte_t> its_payload_data;
-
-        gReadBytes_FIFO = read(gFd_FIFO, gMsgBuffer_FIFO, sizeof(gMsgBuffer_FIFO));
-        if (gMsgBuffer_FIFO[0] == 'D') {
-            
-            for(int i = 0; i < 4; i++){
-                its_payload_data.push_back(static_cast<vsomeip::byte_t>(gLogoDetection->logos[i]));
-            }
-            
-            its_payload->set_data(its_payload_data);
-            its_response->set_payload(its_payload);
-            app_->send(its_response);
-
-            currentNumber++;
+  
+        for(int i = 0; i < 4; i++){
+            its_payload_data.push_back(static_cast<vsomeip::byte_t>(1));//the vector is filled with pseudo number
         }
-
-        if (currentNumber >= NUM_MEASUREMENTS) {
-            std::cout << "Server finished sending. Stopping application." << std::endl;
-
-            detachSharedMemoryAndClosePipe();//-----------------------------
-		    if (kill(childProcessId, SIGKILL) == -1) {
-                perror("Error killing the process");
-		    }//-------------------------------------------------------------
-            app_->stop();
-            return;
-        }  
+            
+        its_payload->set_data(its_payload_data);
+        its_response->set_payload(its_payload);
+        app_->send(its_response);
     }
 
     void run() {
