@@ -35,10 +35,10 @@ const char* PathToObjectDetectionModel = "/home/raspberry/Desktop/YOLO/Ultralyti
 
 //Time **************************************************************/
 #define NUM_MEASUREMENTS 20
-static long gStartTimestamp_Sec;
-static long gStartTimestamp_Nsec;
-static long gEndTimestamp_Sec;
-static long gEndTimestamp_Nsec;
+static long gStartTimestamp_Sec = 0;
+static long gStartTimestamp_Nsec = 0;
+static long gEndTimestamp_Sec = 0;
+static long gEndTimestamp_Nsec = 0;
 static int timeMeasurementIndex = 0;
 
 long getTimestamp_Sec();
@@ -220,7 +220,8 @@ public:
 
     void on_message(const std::shared_ptr<vsomeip::message> &_request) {
 
-        static uint32_t currentNumber = 0;
+        gEndTimestamp_Sec = getTimestamp_Sec();
+		gEndTimestamp_Nsec = getTimestamp_Nsec();
 
         std::cout << "Received a message with Client/Session ["
 		  << std::hex << std::setfill('0')
@@ -240,14 +241,27 @@ public:
                 its_payload_data.push_back(static_cast<vsomeip::byte_t>(gLogoDetection->logos[i]));
             }
             
+            gStartTimestamp_Sec = getTimestamp_Sec();
+            gStartTimestamp_Nsec = getTimestamp_Nsec();
+
             its_payload->set_data(its_payload_data);
             its_response->set_payload(its_payload);
             app_->send(its_response);
 
-            currentNumber++;
+            timeMeasurementIndex++;
         }
 
-        if (currentNumber >= NUM_MEASUREMENTS) {
+        long communicationTime_Sec = gEndTimestamp_Sec - gStartTimestamp_Sec;
+        long communicationTime_Nsec = gEndTimestamp_Nsec - gStartTimestamp_Nsec;
+
+        if (communicationTime_Nsec < 0){
+            communicationTime_Sec -= 1;
+            communicationTime_Nsec += 1000000000;
+        }
+
+        fprintf(csvFile, "%ld\n", communicationTime_Sec * 1000000000 + communicationTime_Nsec);
+
+        if (timeMeasurementIndex >= NUM_MEASUREMENTS) {
             std::cout << "Server finished sending. Stopping application." << std::endl;
 
             detachSharedMemoryAndClosePipe();//-----------------------------
@@ -318,6 +332,13 @@ int main(int argc, char **argv) {
             printf("Error with initializeFIFOAndSharedMemory().\n");
             exit(EXIT_FAILURE);
         }
+
+        FILE *csvFile = fopen("VSOMEIP_CommunicationTime.csv", "w");
+    	if (csvFile == NULL) {
+    		perror("Failed to open file");
+        	return 1;
+    	}
+		fprintf(csvFile, "Nanoseconds\n");
 
         bool use_static_routing(false);
 
