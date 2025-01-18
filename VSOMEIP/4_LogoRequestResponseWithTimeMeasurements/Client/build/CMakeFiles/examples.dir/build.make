@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client
+CMAKE_SOURCE_DIR = /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client/build
+CMAKE_BINARY_DIR = /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client/build
 
 # Utility rule file for examples.
 
@@ -81,6 +81,6 @@ CMakeFiles/examples.dir/clean:
 .PHONY : CMakeFiles/examples.dir/clean
 
 CMakeFiles/examples.dir/depend:
-	cd /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client/build /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client/build /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client/build/CMakeFiles/examples.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client/build /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client/build /home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client/build/CMakeFiles/examples.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/examples.dir/depend
 

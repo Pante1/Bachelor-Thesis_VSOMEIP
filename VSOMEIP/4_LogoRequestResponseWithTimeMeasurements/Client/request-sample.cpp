@@ -21,6 +21,30 @@
 
 #include <vector>
 
+//Time **************************************************************/
+#define NUM_MEASUREMENTS 1002
+static long gStartTimestamp_Sec = 0;
+static long gStartTimestamp_Nsec = 0;
+static long gEndTimestamp_Sec = 0;
+static long gEndTimestamp_Nsec = 0;
+static long roundTripTime_Sec = 0;
+static long roundTripTime_Nsec = 0;
+static int timeMeasurementIndex = 0;
+FILE *csvFile = nullptr;
+
+long getTimestamp_Sec() {
+	struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec;
+}
+
+long getTimestamp_Nsec(void) {
+	struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_nsec;
+}
+//*******************************************************************/
+
 class client_sample {
 public:
     client_sample(bool _use_tcp, bool _be_quiet, uint32_t _cycle)
@@ -129,18 +153,6 @@ public:
     }
 
     void on_message(const std::shared_ptr< vsomeip::message > &_response) {
-        std::cout << "Received a response from Service ["
-                << std::hex << std::setfill('0')
-                << std::setw(4) << _response->get_service()
-                << "."
-                << std::setw(4) << _response->get_instance()
-                << "] to Client/Session ["
-                << std::setw(4) << _response->get_client()
-                << "/"
-                << std::setw(4) << _response->get_session()
-                << "]"
-                << std::endl;
-
         auto payload = _response->get_payload();
 
         if (payload) {
@@ -148,24 +160,66 @@ public:
             std::size_t length = payload->get_length();
 
             if (length > 0) {
-            std::cout << "Client received an array: [";
-            for (std::size_t i = 0; i < length; ++i) {
-                std::cout << static_cast<int>(raw_data[i]);
-                if (i < length - 1) {
-                    std::cout << ", ";
+                gEndTimestamp_Sec = getTimestamp_Sec();
+		        gEndTimestamp_Nsec = getTimestamp_Nsec();
+
+                roundTripTime_Sec = gEndTimestamp_Sec - gStartTimestamp_Sec;
+                roundTripTime_Nsec = gEndTimestamp_Nsec - gStartTimestamp_Nsec;
+
+                if (roundTripTime_Nsec < 0) {
+                    roundTripTime_Sec -= 1;
+                    roundTripTime_Nsec += 1000000000;
                 }
-            }
-            std::cout << "]" << std::endl;
+
+            	if (csvFile) {
+                    fprintf(csvFile, "%ld\n", roundTripTime_Sec * 1000000000 + roundTripTime_Nsec);
+                    fflush(csvFile);
+                } else {
+                    std::cerr << "CSV file is not open!" << std::endl;
+                }
+
+                std::cout << "Received a response from Service ["
+                    << std::hex << std::setfill('0')
+                    << std::setw(4) << _response->get_service()
+                    << "."
+                    << std::setw(4) << _response->get_instance()
+                    << "] to Client/Session ["
+                    << std::setw(4) << _response->get_client()
+                    << "/"
+                    << std::setw(4) << _response->get_session()
+                    << "]"
+                    << std::endl;
+
+                std::cout << "Client received an array: [";
+                for (std::size_t i = 0; i < length; ++i) {
+                    std::cout << static_cast<int>(raw_data[i]);
+                    if (i < length - 1) {
+                        std::cout << ", ";
+                    }
+                }
+                std::cout << "]" << std::endl;
             }
             else {
                 std::cout << "Client received an empty payload!" << std::endl;
+                exit(EXIT_FAILURE);
             }
         }
         else {
             std::cout << "Client received no payload (nullptr)!" << std::endl;
+            exit(EXIT_FAILURE);
         }
 
-        app_->send(request_);
+        if (timeMeasurementIndex < NUM_MEASUREMENTS) {
+            gStartTimestamp_Sec = getTimestamp_Sec();
+            gStartTimestamp_Nsec = getTimestamp_Nsec();
+
+            app_->send(request_);
+            timeMeasurementIndex++;
+        }
+        else {
+            fclose(csvFile);
+            app_->stop();
+        }
     }
 
     void send() {
@@ -235,6 +289,14 @@ int main(int argc, char **argv) {
     std::string udp_enable("--udp");
     std::string quiet_enable("--quiet");
     std::string cycle_arg("--cycle");
+
+    //------------------------------------------
+    csvFile = fopen("RTT_VSOMEIP.csv", "w");
+    if (csvFile == NULL) {
+    	perror("Failed to open file");
+        exit(EXIT_FAILURE);
+    }
+	fprintf(csvFile, "Nanoseconds\n");//---------
 
     int i = 1;
     while (i < argc) {

@@ -7,7 +7,7 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 # The top level Makefile was generated from the following files:
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
-  "/home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/2_LogoRequestResponse/Client/CMakeLists.txt"
+  "/home/raspberry/Desktop/GitHub_VSOMEIP/VSOMEIP/4_LogoRequestResponseWithTimeMeasurements/Client/CMakeLists.txt"
   "CMakeFiles/3.25.1/CMakeCCompiler.cmake"
   "CMakeFiles/3.25.1/CMakeCXXCompiler.cmake"
   "CMakeFiles/3.25.1/CMakeSystem.cmake"
