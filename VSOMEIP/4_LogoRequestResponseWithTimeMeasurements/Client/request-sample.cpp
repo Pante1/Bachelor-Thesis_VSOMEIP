@@ -129,6 +129,18 @@ public:
     }
 
     void on_message(const std::shared_ptr< vsomeip::message > &_response) {
+        std::cout << "Received a response from Service ["
+                << std::hex << std::setfill('0')
+                << std::setw(4) << _response->get_service()
+                << "."
+                << std::setw(4) << _response->get_instance()
+                << "] to Client/Session ["
+                << std::setw(4) << _response->get_client()
+                << "/"
+                << std::setw(4) << _response->get_session()
+                << "]"
+                << std::endl;
+
         auto payload = _response->get_payload();
 
         if (payload) {
@@ -136,8 +148,6 @@ public:
             std::size_t length = payload->get_length();
 
             if (length > 0) {
-            //Do nothing, for time measurement!(The data received from server could be processes here)
-            /*
             std::cout << "Client received an array: [";
             for (std::size_t i = 0; i < length; ++i) {
                 std::cout << static_cast<int>(raw_data[i]);
@@ -146,7 +156,6 @@ public:
                 }
             }
             std::cout << "]" << std::endl;
-            */
             }
             else {
                 std::cout << "Client received an empty payload!" << std::endl;
@@ -157,18 +166,6 @@ public:
         }
 
         app_->send(request_);
-
-        std::cout << "Received a response from Service ["
-        << std::hex << std::setfill('0')
-        << std::setw(4) << _response->get_service()
-        << "."
-        << std::setw(4) << _response->get_instance()
-        << "] to Client/Session ["
-        << std::setw(4) << _response->get_client()
-        << "/"
-        << std::setw(4) << _response->get_session()
-        << "]"
-        << std::endl;
     }
 
     void send() {
